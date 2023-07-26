@@ -1,8 +1,10 @@
 package com.example.firebaseauthenticationtest
 
+import android.content.ContentValues
 import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.util.Log
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
@@ -17,6 +19,7 @@ import com.google.firebase.auth.PhoneAuthCredential
 import com.google.firebase.auth.PhoneAuthOptions
 import com.google.firebase.auth.PhoneAuthProvider
 import com.google.firebase.auth.ktx.auth
+import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.ktx.Firebase
 import com.hbb20.CountryCodePicker
 import java.util.concurrent.TimeUnit
@@ -34,14 +37,14 @@ class FirebaseAuthActivity : AppCompatActivity() {
         setContentView(R.layout.activity_firebase_auth)
 
 
-        val login =findViewById<Button>(R.id.login)
+        val login = findViewById<Button>(R.id.login)
         login.setOnClickListener {
-            startActivity(Intent(this,SignInActivity::class.java))
+            startActivity(Intent(this, SignInActivity::class.java))
         }
 
-        val gallery =findViewById<Button>(R.id.gallery)
+        val gallery = findViewById<Button>(R.id.gallery)
         gallery.setOnClickListener {
-            startActivity(Intent(this,GalleryAccess::class.java))
+            startActivity(Intent(this, GalleryAccess::class.java))
         }
 
 
@@ -60,8 +63,8 @@ class FirebaseAuthActivity : AppCompatActivity() {
         // verify otp
 
 
-        var enterOtp=findViewById<EditText>(R.id.otp)
-        var  verifyButton=findViewById<Button>(R.id.verifyOtp)
+        var enterOtp = findViewById<EditText>(R.id.otp)
+        var verifyButton = findViewById<Button>(R.id.verifyOtp)
         verifyButton.setOnClickListener {
 
             val credential = PhoneAuthProvider.getCredential(vId, enterOtp.text.toString())
@@ -78,17 +81,17 @@ class FirebaseAuthActivity : AppCompatActivity() {
         }
         // EmailAndPassword
 
-        var email=findViewById<EditText>(R.id.email)
-        var pass=findViewById<EditText>(R.id.password)
-        var button=findViewById<Button>(R.id.submit)
-        button.setOnClickListener{
-            auth.createUserWithEmailAndPassword(email.text.toString(),pass.text.toString())
+        var email = findViewById<EditText>(R.id.email)
+        var pass = findViewById<EditText>(R.id.password)
+        var button = findViewById<Button>(R.id.submit)
+        button.setOnClickListener {
+            auth.createUserWithEmailAndPassword(email.text.toString(), pass.text.toString())
                 .addOnSuccessListener {
-                    Toast.makeText(this,"SignUp Successfully",Toast.LENGTH_SHORT).show()
-                    startActivity(Intent(this,HomePageActivity::class.java))
+                    Toast.makeText(this, "SignUp Successfully", Toast.LENGTH_SHORT).show()
+                    startActivity(Intent(this, HomePageActivity::class.java))
                 }
-                .addOnFailureListener{
-                    Toast.makeText(this,it.message,Toast.LENGTH_SHORT).show()
+                .addOnFailureListener {
+                    Toast.makeText(this, it.message, Toast.LENGTH_SHORT).show()
                 }
         }
 
@@ -145,9 +148,9 @@ class FirebaseAuthActivity : AppCompatActivity() {
     }
 
 
-
     override fun onActivityResult(ActivityRequestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(ActivityRequestCode, resultCode, data)
+
 
         if (ActivityRequestCode == requestcode) {
             val task = GoogleSignIn.getSignedInAccountFromIntent(data)
@@ -155,9 +158,30 @@ class FirebaseAuthActivity : AppCompatActivity() {
                 val credencial = GoogleAuthProvider.getCredential(it.idToken, null)
                 auth.signInWithCredential(credencial)
                     .addOnSuccessListener {
-                        Toast.makeText(this, "" + it.user?.displayName+ it.user?.email+" Succesfull", Toast.LENGTH_SHORT)
-                            .show()
-                        startActivity(Intent(this,HomePageActivity::class.java))
+                        val auth = FirebaseAuth.getInstance().currentUser?.uid
+
+                        val db = FirebaseFirestore.getInstance()
+                        val user = hashMapOf(
+                            "name" to it.user?.displayName,
+                            "imageUrl" to it.user?.photoUrl,
+                            "email" to it.user?.email,
+                            "number" to it.user?.phoneNumber
+                        )
+
+// Add a new document with a generated ID
+                        if (auth != null) {
+                            db.collection("users").document(auth)
+                                .set(user)
+                                .addOnSuccessListener {
+                                    Log.d(ContentValues.TAG, "DocumentSnapshot added with ID")
+                                    startActivity(Intent(this, GalleryAccess::class.java))
+
+                                }
+                                .addOnFailureListener { e ->
+                                    Log.w(ContentValues.TAG, "Error adding document", e)
+                                }
+                        }
+
                     }
                     .addOnFailureListener {
                         Toast.makeText(this, "" + it.message, Toast.LENGTH_SHORT).show()
@@ -168,8 +192,5 @@ class FirebaseAuthActivity : AppCompatActivity() {
                 }
         }
 
-
     }
-
-
-    }
+}
